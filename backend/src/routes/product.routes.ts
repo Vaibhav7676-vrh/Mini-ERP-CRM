@@ -6,6 +6,13 @@ import {
   updateProductController,
   deleteProductController,
 } from "../controllers/product.controller";
+import {
+  stockInController,
+  stockOutController,
+  getStockLogsController,
+} from "../controllers/stock.controller";
+
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -23,5 +30,23 @@ router.put("/:id", updateProductController);
 
 // Delete product
 router.delete("/:id", deleteProductController);
+
+router.post(
+  "/:id/stock/in",
+  authenticate,
+  stockInController
+);
+
+router.post(
+  "/:id/stock/out",
+  authenticate,
+  stockOutController
+);
+
+router.get(
+  "/:id/stock-logs",
+  authenticate,
+  getStockLogsController
+);
 
 export default router;
