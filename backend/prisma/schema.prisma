@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  ADMIN
+  SALES
+  WAREHOUSE
+  ACCOUNTS
+}
+
+enum CustomerType {
+  RETAIL
+  WHOLESALE
+  DISTRIBUTOR
+}
+
+enum CustomerStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+}
+
+enum MovementType {
+  IN
+  OUT
+}
+
+enum ChallanStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  name         String
+  email        String      @unique
+  passwordHash String
+  role         UserRole    @default(SALES)
+  createdAt    DateTime    @default(now())
+
+  stockLogs    StockLog[]
+  challans     Challan[]
+  followUps    FollowUp[]
+}
+
+model Customer {
+  id           Int            @id @default(autoincrement())
+  name         String
+  mobile       String
+  email        String?
+  businessName String?
+  gstNumber    String?
+  customerType CustomerType
+  address      String
+  status       CustomerStatus @default(LEAD)
+  followUpDate DateTime?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  challans     Challan[]
+  followUps    FollowUp[]
+}
+
+model FollowUp {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  userId     Int
+  note       String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id            Int         @id @default(autoincrement())
+  name          String
+  sku           String      @unique
+  category      String
+  unitPrice     Decimal     @db.Decimal(10, 2)
+  currentStock  Int         @default(0)
+  minimumStock  Int         @default(0)
+  warehouse     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  stockLogs     StockLog[]
+  challanItems  ChallanItem[]
+}
+
+model StockLog {
+  id           Int          @id @default(autoincrement())
+  productId    Int
+  quantity     Int
+  movementType MovementType
+  reason       String
+  createdBy    Int
+  createdAt    DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [createdBy], references: [id])
+}
+
+model Challan {
+  id            Int           @id @default(autoincrement())
+  challanNumber String        @unique
+  customerId    Int
+  totalQuantity Int           @default(0)
+  status        ChallanStatus @default(DRAFT)
+  createdBy     Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  customer Customer      @relation(fields: [customerId], references: [id])
+  user     User          @relation(fields: [createdBy], references: [id])
+  items    ChallanItem[]
+}
+
+model ChallanItem {
+  id                Int      @id @default(autoincrement())
+  challanId         Int
+  productId         Int
+  productNameSnapshot String
+  skuSnapshot        String
+  unitPriceSnapshot  Decimal  @db.Decimal(10, 2)
+  quantity           Int
+
+  challan Challan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
