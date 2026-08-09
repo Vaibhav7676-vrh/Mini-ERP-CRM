@@ -23,3 +23,37 @@ backend/.windsurf/
 
 # OS
 .DS_Store
+
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Frontend build
+frontend/dist/
+
+# Backend build
+backend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Prisma
+backend/src/generated/prisma/
