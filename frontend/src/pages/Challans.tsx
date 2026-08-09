@@ -40,6 +40,9 @@ export default function Challans() {
   const [products, setProducts] = useState<Product[]>([]);
 
   const [showForm, setShowForm] = useState(false);
+  const [selectedChallan, setSelectedChallan] =
+    useState<Challan | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const [customerId, setCustomerId] = useState("");
   const [productId, setProductId] = useState("");
@@ -48,6 +51,7 @@ export default function Challans() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const loadData = async () => {
     try {
@@ -113,20 +117,157 @@ export default function Challans() {
       setShowForm(false);
 
       await loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
 
-      setError(
-        err.response?.data?.message ||
-          "Failed to create challan"
-      );
+      const errorMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err
+          ? (
+              err as {
+                response?: {
+                  data?: {
+                    message?: string;
+                  };
+                };
+              }
+            ).response?.data?.message
+          : undefined;
+
+      setError(errorMessage || "Failed to create challan");
     } finally {
       setSaving(false);
     }
   };
 
+  // -----------------------------
+  // VIEW CHALLAN DETAILS
+  // -----------------------------
+  const viewChallan = async (id: number) => {
+    setLoadingDetails(true);
+    setError("");
+
+    try {
+      const response = await api.get(`/challans/${id}`);
+
+      const challan = response.data.challan || response.data;
+
+      setSelectedChallan(challan);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load challan details");
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // -----------------------------
+  // CONFIRM CHALLAN
+  // -----------------------------
+  const confirmChallan = async (
+    id: number,
+    e?: React.MouseEvent
+  ) => {
+    e?.stopPropagation();
+
+    setActionLoading(id);
+    setError("");
+
+    try {
+      await api.patch(`/challans/${id}/confirm`);
+
+      await loadData();
+
+      // Refresh details if currently open
+      if (selectedChallan?.id === id) {
+        await viewChallan(id);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+
+      const errorMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err
+          ? (
+              err as {
+                response?: {
+                  data?: {
+                    message?: string;
+                  };
+                };
+              }
+            ).response?.data?.message
+          : undefined;
+
+      setError(
+        errorMessage ||
+          "Failed to confirm challan. Check available stock."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // -----------------------------
+  // CANCEL CHALLAN
+  // -----------------------------
+  const cancelChallan = async (
+    id: number,
+    e?: React.MouseEvent
+  ) => {
+    e?.stopPropagation();
+
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this challan?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActionLoading(id);
+    setError("");
+
+    try {
+      await api.patch(`/challans/${id}/cancel`);
+
+      await loadData();
+
+      if (selectedChallan?.id === id) {
+        await viewChallan(id);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+
+      const errorMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err
+          ? (
+              err as {
+                response?: {
+                  data?: {
+                    message?: string;
+                  };
+                };
+              }
+            ).response?.data?.message
+          : undefined;
+
+      setError(
+        errorMessage || "Failed to cancel challan"
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
-    <div>
+    <div className="page-container">
+      {/* HEADER */}
+
       <div className="page-header">
         <div>
           <p className="eyebrow">SALES</p>
@@ -154,6 +295,8 @@ export default function Challans() {
           {error}
         </div>
       )}
+
+      {/* CHALLAN LIST */}
 
       <div className="customers-card">
         <div className="card-header">
@@ -194,6 +337,10 @@ export default function Challans() {
               <div
                 className="challan-row"
                 key={challan.id}
+                onClick={() => viewChallan(challan.id)}
+                style={{
+                  cursor: "pointer",
+                }}
               >
                 <div className="challan-avatar">
                   #
@@ -229,11 +376,65 @@ export default function Challans() {
                     challan.createdAt
                   ).toLocaleDateString("en-IN")}
                 </div>
+
+                {/* ACTIONS */}
+
+                {challan.status === "DRAFT" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      marginLeft: "16px",
+                    }}
+                  >
+                    <button
+                      className="primary-button"
+                      style={{
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                      }}
+                      disabled={
+                        actionLoading === challan.id
+                      }
+                      onClick={(e) =>
+                        confirmChallan(
+                          challan.id,
+                          e
+                        )
+                      }
+                    >
+                      {actionLoading === challan.id
+                        ? "..."
+                        : "Confirm"}
+                    </button>
+
+                    <button
+                      className="secondary-button"
+                      style={{
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                      }}
+                      disabled={
+                        actionLoading === challan.id
+                      }
+                      onClick={(e) =>
+                        cancelChallan(
+                          challan.id,
+                          e
+                        )
+                      }
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* CREATE CHALLAN MODAL */}
 
       {showForm && (
         <div
@@ -272,7 +473,9 @@ export default function Challans() {
                 <select
                   value={customerId}
                   onChange={(e) =>
-                    setCustomerId(e.target.value)
+                    setCustomerId(
+                      e.target.value
+                    )
                   }
                   required
                 >
@@ -280,17 +483,19 @@ export default function Challans() {
                     Select customer
                   </option>
 
-                  {customers.map((customer) => (
-                    <option
-                      key={customer.id}
-                      value={customer.id}
-                    >
-                      {customer.name}
-                      {customer.businessName
-                        ? ` — ${customer.businessName}`
-                        : ""}
-                    </option>
-                  ))}
+                  {customers.map(
+                    (customer) => (
+                      <option
+                        key={customer.id}
+                        value={customer.id}
+                      >
+                        {customer.name}
+                        {customer.businessName
+                          ? ` — ${customer.businessName}`
+                          : ""}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -300,7 +505,9 @@ export default function Challans() {
                 <select
                   value={productId}
                   onChange={(e) =>
-                    setProductId(e.target.value)
+                    setProductId(
+                      e.target.value
+                    )
                   }
                   required
                 >
@@ -308,16 +515,18 @@ export default function Challans() {
                     Select product
                   </option>
 
-                  {products.map((product) => (
-                    <option
-                      key={product.id}
-                      value={product.id}
-                    >
-                      {product.name} —{" "}
-                      {product.sku} — Stock:{" "}
-                      {product.currentStock}
-                    </option>
-                  ))}
+                  {products.map(
+                    (product) => (
+                      <option
+                        key={product.id}
+                        value={product.id}
+                      >
+                        {product.name} —{" "}
+                        {product.sku} — Stock:{" "}
+                        {product.currentStock}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -329,7 +538,9 @@ export default function Challans() {
                   min="1"
                   value={quantity}
                   onChange={(e) =>
-                    setQuantity(e.target.value)
+                    setQuantity(
+                      e.target.value
+                    )
                   }
                   required
                 />
@@ -357,6 +568,218 @@ export default function Challans() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CHALLAN DETAILS MODAL */}
+
+      {selectedChallan && (
+        <div
+          className="modal-overlay"
+          onClick={() =>
+            setSelectedChallan(null)
+          }
+        >
+          <div
+            className="modal-card"
+            style={{
+              maxWidth: "700px",
+            }}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">
+                  CHALLAN DETAILS
+                </p>
+
+                <h2>
+                  {selectedChallan.challanNumber}
+                </h2>
+              </div>
+
+              <button
+                className="modal-close"
+                onClick={() =>
+                  setSelectedChallan(null)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1fr 1fr",
+                gap: "20px",
+                marginBottom: "24px",
+              }}
+            >
+              <div>
+                <strong>Customer</strong>
+
+                <p>
+                  {selectedChallan.customer
+                    ?.name ||
+                    `Customer #${selectedChallan.customerId}`}
+                </p>
+              </div>
+
+              <div>
+                <strong>Status</strong>
+
+                <p>
+                  <span
+                    className={`status-badge ${selectedChallan.status.toLowerCase()}`}
+                  >
+                    {selectedChallan.status}
+                  </span>
+                </p>
+              </div>
+
+              <div>
+                <strong>Total Quantity</strong>
+
+                <p>
+                  {selectedChallan.totalQuantity}{" "}
+                  items
+                </p>
+              </div>
+
+              <div>
+                <strong>Created</strong>
+
+                <p>
+                  {new Date(
+                    selectedChallan.createdAt
+                  ).toLocaleDateString(
+                    "en-IN"
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <h3
+              style={{
+                marginBottom: "12px",
+              }}
+            >
+              Products
+            </h3>
+
+            {selectedChallan.items &&
+            selectedChallan.items.length > 0 ? (
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                }}
+              >
+                {selectedChallan.items.map(
+                  (item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        justifyContent:
+                          "space-between",
+                        padding: "14px 16px",
+                        borderBottom:
+                          "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div>
+                        <strong>
+                          {
+                            item.productNameSnapshot
+                          }
+                        </strong>
+
+                        <div
+                          style={{
+                            fontSize:
+                              "13px",
+                            color:
+                              "#7a8da0",
+                          }}
+                        >
+                          {item.skuSnapshot}
+                        </div>
+                      </div>
+
+                      <strong>
+                        × {item.quantity}
+                      </strong>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <p>
+                No product details available.
+              </p>
+            )}
+
+            {selectedChallan.status ===
+              "DRAFT" && (
+              <div
+                className="modal-actions"
+                style={{
+                  marginTop: "24px",
+                }}
+              >
+                <button
+                  className="secondary-button"
+                  disabled={
+                    actionLoading ===
+                    selectedChallan.id
+                  }
+                  onClick={(e) =>
+                    cancelChallan(
+                      selectedChallan.id,
+                      e
+                    )
+                  }
+                >
+                  Cancel Challan
+                </button>
+
+                <button
+                  className="primary-button"
+                  disabled={
+                    actionLoading ===
+                    selectedChallan.id
+                  }
+                  onClick={(e) =>
+                    confirmChallan(
+                      selectedChallan.id,
+                      e
+                    )
+                  }
+                >
+                  {actionLoading ===
+                  selectedChallan.id
+                    ? "Confirming..."
+                    : "Confirm Challan"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {loadingDetails && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="page-loading">
+              Loading challan details...
+            </div>
           </div>
         </div>
       )}

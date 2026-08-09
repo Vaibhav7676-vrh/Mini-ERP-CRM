@@ -9,8 +9,14 @@ async function main() {
     where: {
       email: "admin@mini-erp.com",
     },
-    update: {},
-    create: {
+    
+update: {
+  passwordHash,
+  name: "System Admin",
+  role: "ADMIN",
+},
+
+create: {
       name: "System Admin",
       email: "admin@mini-erp.com",
       passwordHash,

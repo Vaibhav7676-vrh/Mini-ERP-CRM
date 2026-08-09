@@ -1,6 +1,7 @@
 import {
   BrowserRouter,
   Navigate,
+  Outlet,
   Route,
   Routes,
 } from "react-router-dom";
@@ -24,7 +25,7 @@ function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Layout />;
+  return <Outlet />;
 }
 
 function App() {
@@ -32,25 +33,51 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Public route */}
           <Route path="/login" element={<Login />} />
 
+          {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route
-              path="/customers/:id"
-              element={<CustomerDetails />}
-            />
-            <Route path="/products" element={<Products />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/challans" element={<Challans />} />
+            <Route element={<Layout />}>
+              <Route
+                path="/dashboard"
+                element={<Dashboard />}
+              />
+
+              <Route
+                path="/customers"
+                element={<Customers />}
+              />
+
+              <Route
+                path="/customers/:id"
+                element={<CustomerDetails />}
+              />
+
+              <Route
+                path="/products"
+                element={<Products />}
+              />
+
+              <Route
+                path="/inventory"
+                element={<Inventory />}
+              />
+
+              <Route
+                path="/challans"
+                element={<Challans />}
+              />
+            </Route>
           </Route>
 
+          {/* Default route */}
           <Route
             path="/"
             element={<Navigate to="/dashboard" replace />}
           />
 
+          {/* Unknown route */}
           <Route
             path="*"
             element={<Navigate to="/dashboard" replace />}
