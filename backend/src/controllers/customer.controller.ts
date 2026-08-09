@@ -8,6 +8,10 @@ import {
   deleteCustomer,
   createFollowUp,
   getCustomerFollowUps,
+  
+} from "../services/customer.service";
+import {
+  addFollowUp,
 } from "../services/customer.service";
 
 // CREATE CUSTOMER
@@ -37,16 +41,16 @@ export const getCustomersController = async (
   res: Response
 ) => {
   try {
-    const customers = await getCustomers();
+    const search = req.query.search as string | undefined;
 
-    res.status(200).json({
+    const customers = await getCustomers(search);
+
+    return res.status(200).json({
       customers,
     });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Failed to fetch customers",
+  } catch (error: any) {
+    return res.status(500).json({
+      message: error.message,
     });
   }
 };
@@ -174,6 +178,43 @@ export const getCustomerFollowUpsController = async (
 
     return res.status(500).json({
       message: "Failed to fetch follow-ups",
+    });
+  }
+};
+export const addFollowUpController = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const customerId = Number(req.params.id);
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const { note } = req.body;
+
+    const followUp = await addFollowUp(
+      customerId,
+      req.user.userId,
+      note
+    );
+
+    return res.status(201).json({
+      message: "Follow-up added successfully",
+      followUp,
+    });
+  } catch (error: any) {
+    if (error.message === "Customer not found") {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(400).json({
+      message: error.message,
     });
   }
 };

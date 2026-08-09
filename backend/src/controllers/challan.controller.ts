@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
+
 import {
   createChallan,
   getChallans,
@@ -8,6 +9,9 @@ import {
   confirmChallan,
   cancelChallan,
 } from "../services/challan.service";
+import {
+  addFollowUp,
+} from "../services/customer.service";
 
 
 export const createChallanController = async (
@@ -180,6 +184,43 @@ export const cancelChallanController = async (
 
     return res.status(500).json({
       message: "Failed to cancel challan",
+    });
+  }
+};
+export const addFollowUpController = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const customerId = Number(req.params.id);
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const { note } = req.body;
+
+    const followUp = await addFollowUp(
+      customerId,
+      req.user.userId,
+      note
+    );
+
+    return res.status(201).json({
+      message: "Follow-up added successfully",
+      followUp,
+    });
+  } catch (error: any) {
+    if (error.message === "Customer not found") {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(400).json({
+      message: error.message,
     });
   }
 };

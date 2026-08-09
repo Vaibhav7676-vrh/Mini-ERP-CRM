@@ -8,6 +8,7 @@ import {
   deleteCustomerController,
   createFollowUpController,
   getCustomerFollowUpsController,
+  addFollowUpController,
 } from "../controllers/customer.controller";
 
 const router = Router();
@@ -36,6 +37,12 @@ router.get(
   "/:id/followups",
   authenticate,
   getCustomerFollowUpsController
+);
+
+router.post(
+  "/:id/followups",
+  authenticate,
+  addFollowUpController
 );
 
 export default router;

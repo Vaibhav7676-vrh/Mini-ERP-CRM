@@ -17,8 +17,35 @@ export const createCustomer = async (data: {
   });
 };
 
-export const getCustomers = async () => {
+export const getCustomers = async (search?: string) => {
   return prisma.customer.findMany({
+    where: search
+      ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+              },
+            },
+            {
+              mobile: {
+                contains: search,
+              },
+            },
+            {
+              businessName: {
+                contains: search,
+              },
+            },
+            {
+              email: {
+                contains: search,
+              },
+            },
+          ],
+        }
+      : undefined,
+
     orderBy: {
       createdAt: "desc",
     },
@@ -94,6 +121,44 @@ export const deleteCustomer = async (id: number) => {
   return prisma.customer.delete({
     where: {
       id,
+    },
+  });
+};
+export const addFollowUp = async (
+  customerId: number,
+  userId: number,
+  note: string
+) => {
+  if (!note || !note.trim()) {
+    throw new Error("Follow-up note is required");
+  }
+
+  const customer = await prisma.customer.findUnique({
+    where: {
+      id: customerId,
+    },
+  });
+
+  if (!customer) {
+    throw new Error("Customer not found");
+  }
+
+  return prisma.followUp.create({
+    data: {
+      customerId,
+      userId,
+      note: note.trim(),
+    },
+    include: {
+      customer: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
     },
   });
 };
